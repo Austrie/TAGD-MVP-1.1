@@ -37,6 +37,7 @@ const download = function(pet, filename, doc, result2, length, ogRes){
       paragraph = new docx.Paragraph(pet.description);
       doc.addParagraph(paragraph);
       result2.push("");
+      deleteFile(filename);
       console.log("Download made it at " + result2.length + " desired length is " + length)
       if (result2.length === length) {
         console.log("About to download ")
@@ -175,4 +176,14 @@ const createDocument = function(result, ogRes) {
 
     download(pet, "photo" + i + fileExt, doc, result2, result.length, ogRes);
   }
+}
+
+function deleteFile (file) {
+    fs.unlink(file, function (err) {
+        if (err) {
+            console.error(err.toString());
+        } else {
+            console.warn(file + ' deleted');
+        }
+    });
 }
