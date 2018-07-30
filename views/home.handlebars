@@ -1,0 +1,13 @@
+<div class='container'>
+
+  <form action="/" method="post">
+    <label for="team_name">Enter URLs for Petfinder: </label>
+    {{#times 10}}
+      <div>
+        <input id="url{{this}}" type="url" name="url_field{{this}}">
+    </div>
+    {{/times}}
+    <input type="submit" value="Submit">
+</form>
+
+</div>
