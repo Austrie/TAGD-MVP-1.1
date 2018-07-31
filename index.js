@@ -23,7 +23,7 @@ const forLoop = function(n, block) {
 const download = function(pet, filename, doc, result2, length, ogRes){
   request.head(pet.photo, function(err, res, body){
     request(pet.photo).pipe(fs.createWriteStream(filename)).on('close', () => {
-      let paragraph = new docx.Paragraph(pet.link);
+      let paragraph = new docx.Paragraph(pet.link).style("Hidden1");
       doc.addParagraph(paragraph);
 
       const image = doc.createImage("./" + filename);
@@ -31,7 +31,10 @@ const download = function(pet, filename, doc, result2, length, ogRes){
       paragraph = new docx.Paragraph(pet.name).heading1();
       doc.addParagraph(paragraph);
 
-      paragraph = new docx.Paragraph(pet.breed + " - " + pet.gender+ " - " + pet.age + " - " + pet.size + " - " + pet.type).heading2();
+      paragraph = new docx.Paragraph(pet.breed + " " + pet.type + " - " + pet.gender+ " - " + pet.age + " - " + pet.size).heading2();
+      doc.addParagraph(paragraph);
+
+      paragraph = new docx.Paragraph("Extra Information: " + pet.extra).heading2();
       doc.addParagraph(paragraph);
 
       paragraph = new docx.Paragraph(pet.description);
@@ -67,8 +70,9 @@ app.get("/", (req, res) => {
 app.post("/", (req, res) => {
   console.log(req.body);
   let links = req.body;
+  let startingOptions = ["//www.petfinder.com"];
   for (let key in links) {
-    if (links[key] === '') {
+    if (!links[key].includes(startingOptions[0]) || links[key] === '') {
       delete links[key];
     }
   }
@@ -76,7 +80,12 @@ app.post("/", (req, res) => {
   let linkArray = Object.values(links);
   console.log(linkArray);
   let result = [];
-  getResults(linkArray, result, res);
+  try {
+    getResults(linkArray, result, res);
+  } catch(err) {
+    console.log(err);
+    res.render('home');
+  }
 })
 
 app.listen(process.env.PORT || 5000, () => {
@@ -118,16 +127,36 @@ const getResults = function(linkArray, result, ogRes) {
     id = id.split("").reverse().join("");
     // console.log('This is id: ' + id);
     petfinder.pet.get(id).then((pet) => {
-      // console.log('Inside petfinder api');
+      console.log('Inside petfinder api, heres pets: ');
+      console.log(pet);
+      let size = pet.size;
+      switch (size) {
+        case("XL"):
+          size = "Extra Large";
+          break;
+        case("L"):
+          size = "Large";
+          break;
+        case("M"):
+          size = "Medium";
+          break;
+        case("S"):
+          size = "Small";
+          break;
+        default:
+          size = pet.size;
+          break;
+      }
       result.push({
         photo: pet.media.photos['1'].x,
         link: aLink,
         name: pet.name,
-        breed: pet.breeds.toString(),
-        gender: pet.sex,
+        breed: pet.breeds.join(" & "),
+        gender: (pet.sex === "" ? "" : (pet.sex === "M" ? "Male" : "Female")),
         age: pet.age,
-        size: pet.size,
-        type: pet.type,
+        size,
+        type: pet.animal,
+        extra: seperateWords(pet.options.join(", ")),
         description: pet.description,
       })
       console.log("Inside petfinder api, result.length " + result.length + " linkArray.length " + linkArray.length)
@@ -157,6 +186,10 @@ const createDocument = function(result, ogRes) {
         .bold()
         .underline('double', 'FF0000')
         .spacing({before: 240, after: 120});
+  doc.Styles.createParagraphStyle("Hidden1", "Hidden 1")
+        .color('ffffff')
+
+  doc.createImage("./TAGD_LOGO.png");
 
   let result2 = [];
   for (let i = 0; i < result.length; i += 1) {
@@ -178,7 +211,7 @@ const createDocument = function(result, ogRes) {
   }
 }
 
-function deleteFile (file) {
+function deleteFile(file) {
     fs.unlink(file, function (err) {
         if (err) {
             console.error(err.toString());
@@ -186,4 +219,22 @@ function deleteFile (file) {
             console.warn(file + ' deleted');
         }
     });
+}
+
+const seperateWords = function(input) {
+  // console.log("Initial casing: " + input);
+  for (let i = 0; i < input.length; i++) {
+    let curr = input.charAt(i);
+    // console.log("This is curr: " + curr);
+    if (curr === curr.toUpperCase()) {
+      // console.log("Was Upper Case");
+      if (i === 0 || i === input.length - 1 || !isNaN(curr * 1)) {
+        continue;
+      }
+      input = input.substring(0, i) + " " + input.charAt(i).toLowerCase() + input.substring(i + 1, input.length);
+      i++;
+    }
+  }
+  // console.log("Ending casing: " + input);
+  return input;
 }
